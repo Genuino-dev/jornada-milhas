@@ -1,32 +1,60 @@
 import { Injectable } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
-import { MatChipSelectionChange } from '@angular/material/chips';
 import { MatDialog } from '@angular/material/dialog';
 import { ModalComponent } from 'src/app/shared/modal/modal.component';
+import { UnidadeFederativa } from '../types/type';
+import { UnidadeFederativaService } from './unidade-federativa-service.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class FormBuscaService {
-
   formBusca: FormGroup;
+  ufs: UnidadeFederativa[] = []
+  tipos: string[] = ['Econômica', 'Executiva']
 
-  constructor(private dialog: MatDialog) { 
-
+  constructor(
+    private dialog: MatDialog, 
+    private ufService: UnidadeFederativaService
+  ) {
     this.formBusca = new FormGroup({
       somenteIda: new FormControl(false),
-      origem: new FormControl(null),
-      destino: new FormControl(null),
-      tipo: new FormControl("Executiva"),
-      adultos: new FormControl(3),
+      adultos: new FormControl(1),
       criancas: new FormControl(0),
-      bebes: new FormControl(1)
-    })
+      bebes: new FormControl(0),
+      tipo: new FormControl('Econômica'),
+      origem: new FormControl(),
+      destino: new FormControl(),
+      dataIda: new FormControl(),
+      dataVolta: new FormControl(),
+    });
+    this.ufService.listar()
+      .subscribe(data => {
+        this.ufs = data;
+      })
   }
 
-  getDescricaoPassageiros (): string {
-    let descricao = ''
+  trocarOrigemDestino(): void {
+    const origem = this.formBusca.get('origem')?.value;
+    const destino = this.formBusca.get('destino')?.value;
+  
+    this.formBusca.patchValue({
+      origem: destino,
+      destino: origem
+    });
+  }
 
+  obterControle(nome:string): FormControl {
+    const control = this.formBusca.get(nome);
+    if (!control) {
+      throw new Error(`FormControl com nome "${nome}" não existe.`);
+    }
+    return control as FormControl;
+  }
+
+  getDescricaoPassageiros(): string {
+    let descricao = '';
+  
     const adultos = this.formBusca.get('adultos')?.value;
     if (adultos && adultos > 0) {
       descricao += `${adultos} adulto${adultos > 1 ? 's' : ''}`;
@@ -42,29 +70,17 @@ export class FormBuscaService {
       descricao += `${descricao ? ', ' : ''}${bebes} bebê${bebes > 1 ? 's' : ''}`;
     }
   
-    return descricao
-  }
-
-  obterControle(nome:string): FormControl {
-    const control = this.formBusca.get(nome);
-    if (!control) {
-      throw new Error(`FormControl com nome "${nome}" não existe.`);
-    }
-    return control as FormControl;
-  }
-
-  alterarTipo (evento: MatChipSelectionChange, tipo: string) {
-    if (evento.selected) {
-      this.formBusca.patchValue({
-        tipo,
-      })
-      console.log('Tipo de passagem alterado para: ', tipo)
-    }
+    return descricao;
   }
 
   openDialog() {
     this.dialog.open(ModalComponent, {
-      width: '50%'
+      width: '50%',
+      data: {
+        tipos: this.tipos,
+        formBusca: this.formBusca
+      }
     })
   }
+
 }
